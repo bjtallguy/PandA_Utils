@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="DataSourceManagerImpl" format="xml" hash="353106542">
+  <component name="DataSourceManagerImpl" format="xml" hash="3918486371">
     <data-source source="LOCAL" name="New DotNet DB" uuid="0c79008d-49ad-4037-9325-bab4ac7bc31d">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/../AcmLogs/merge_logs/dotnet.db</jdbc-url>
+      <libraries />
+    </data-source>
+    <data-source source="LOCAL" name="New DotNet DB [2]" uuid="5bcf2a74-b561-4f14-bf20-ec9819dadc2f">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/LongestTimePerSession/dotnet.db</jdbc-url>
       <libraries />
     </data-source>
   </component>
