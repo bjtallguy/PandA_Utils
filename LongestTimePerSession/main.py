@@ -1,7 +1,7 @@
 __author__ = 'BJ'
+"""A utility script for sorting an IIS log file by session id and preparing various reports."""
 
 import re
-import csv
 import sqlite3
 from datetime import datetime
 
@@ -10,9 +10,65 @@ SAMPLE_LINE = r"2015-07-09 09:42:07,615 [11] INFO  SBS.ESA.WEBUI [(null)] - [Ses
               r" [Session_Start] New SessionID:gunjkxtvmsr3tjvgaltoqvex"
 DB = 'dotnet.db'
 DOTNET_LOG = r"//sbsfiles0/IQA_SQA_Central/IQA - Automation/tmp/emortgages/dotnetlogs.csv"
+OUT_FILE = "report.txt"
 
 
-FIELD_NAMES = []
+DASH_LENGTH = 120
+REPORT_HEADER = """This report contains {{session_count}} sessions."""
+SECTION_HEADER = "SessionID:{session_id}  Rows:{row_count}  Max Wait:{max_wait}  Total Time:{session_time}"
+SECTION_LINE = """ [{level}] {time} : {message}"""
+REPORT_FIELDS = ['sessionid', 'time', 'level', 'message']
+
+
+class ReportSectionFunctions:
+    """Functions that return values for a given set of rows.
+    rows are lists of dictionaries, each representing a record from the database."""
+
+    def __init__(self, rows, order_key='time'):
+        self.order_key = order_key
+        self.rows = list(rows)
+        self.header_values = self.get_header_dict()
+
+    def process_timestamp(self, time):
+        """Some timestamps are coming back without partial seconds :("""
+        try:
+            proc_time = datetime.strptime(time, "%Y-%m-%d %H:%M:%S.%f")
+        except ValueError:
+            proc_time = datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
+        return proc_time
+
+    def process_rows(self):
+        """Pre-processing for database rows, before the following functions are used."""
+        self.rows.sort(key=lambda k: k[self.order_key])
+
+    def row_count(self):
+        return len(self.rows)
+
+    def max_wait(self):
+        """Return the maximum wait between ordered time fields."""
+        deltas = []
+        prev = self.process_timestamp(self.rows[0]['time'])
+        for r in self.rows:
+            current = self.process_timestamp(r['time'])
+            deltas.append(current - prev)
+            prev = current
+        return max(deltas)
+
+    def session_time(self):
+        """
+        Calculates the time between sessin start and finish.
+        float:return: time in msec
+        """
+        start = self.process_timestamp(self.rows[0]['time'])
+        end = self.process_timestamp(self.rows[-1]['time'])
+        return end - start
+
+    def get_header_dict(self):
+        """Return a dictionary of values required for each section."""
+        return {'row_count': self.row_count(),
+                'session_id': self.rows[0]['sessionid'],
+                'session_time': self.session_time(),
+                'max_wait': self.max_wait()}
 
 
 def extract_time_stamp(line):
@@ -87,16 +143,36 @@ def create_db(db_file):
     conn = get_connection(db_file)
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS log")
-    cursor.execute("CREATE TABLE log (time text, level text, sessionid text, message text)")
+    cursor.execute("CREATE TABLE log (time timestamp, level text, sessionid text, message text)")
     cursor.close()
     conn.commit()
 
 
+def generate_report(database, report_file):
+    c = get_connection(database).cursor()
+    f = open(report_file, mode='w')
+
+    session_ids = c.execute("SELECT DISTINCT sessionid FROM log ORDER BY time").fetchall()
+
+    print("\n\n This report includes %s sessions \n" % (len(session_ids)) + ("-" * DASH_LENGTH), file=f)
+
+    for session_id in [r['sessionid'] for r in session_ids]:
+
+        messages = c.execute("SELECT sessionid, message, level, time as \"time [timestamp]\" "
+                             "FROM log WHERE sessionid=? ORDER BY time", (session_id, )).fetchall()
+
+        print("\n" + ("-" * DASH_LENGTH), file=f)
+        print(SECTION_HEADER.format_map(ReportSectionFunctions(messages).header_values), file=f)
+        print(("-" * DASH_LENGTH) + "\n", file=f)
+
+        for msg in messages:
+            print(SECTION_LINE.format_map(msg).strip(), file=f)
+
+    c.close()
+    f.close()
+
+
 if __name__ == '__main__':
-    create_db(DB)
-    populate_db(DB, DOTNET_LOG)
-    conn = get_connection(DB)
-
-    print(process_log_line(SAMPLE_LINE))
-
-
+    # create_db(DB)
+    # populate_db(DB, DOTNET_LOG)
+    generate_report(DB, OUT_FILE)

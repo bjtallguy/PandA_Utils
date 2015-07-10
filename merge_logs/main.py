@@ -96,7 +96,7 @@ if __name__ == '__main__':
     for uid in c.execute("SELECT DISTINCT sessionid FROM dotnetmsgs ORDER BY test_id" + where_clause).fetchall():
         msg_count = c.execute("SELECT COUNT(message) AS msg_count FROM dotnetmsgs WHERE sessionid=?",
                               (uid['sessionid'], )).fetchone()['msg_count']
-        messages = c.execute("SELECT * FROM dotnetmsgs WHERE sessionid=? ORDER BY time", (uid['sessionid'], ))
+        messages = c.execute("SELECT * FROM dotnetmsgs WHERE sessionid=? ORDER BY time", (msg['sessionid'], ))
         msg = messages.fetchone()
         print("\n\n---------------------------------------------------", file=f)
         print("Test ID:%s - %s : (SessionID:%s  App Server:%s  Web Server:%s  Messages:%s)" %
