@@ -1,5 +1,9 @@
 __author__ = 'BJ'
-"""A utility script for sorting an IIS log file by session id and preparing various reports."""
+"""A utility script for sorting an IIS log file by session id and preparing various reports.
+Note: All log files must include a timestamp, a session id and a message (the message may be empty).
+      All other fields will be searched for by key in the row dictionary (row) and are assumed to be
+      un-indexed and of type 'text'.
+"""
 
 import re
 import sqlite3
@@ -10,6 +14,12 @@ from datetime import datetime
 DB = 'dotnet.db'
 DOTNET_LOG = r"//sbsfiles0/IQA_SQA_Central/IQA - Automation/tmp/emortgages/dotnetlogs.csv"
 OUT_FILE = "report.txt"
+SESSION_FIELD = "sessionid"
+TIME_FIELD = "time"
+LOG_MESSAGE_FIELD = "message"
+OTHER_FIELDS = ['level']
+DB_FIELDS = [SESSION_FIELD, TIME_FIELD, LOG_MESSAGE_FIELD] + OTHER_FIELDS
+DB_LOG_TABLE_NAME = 'log'
 
 
 # Report definition elements
@@ -86,6 +96,7 @@ def extract_time_stamp(line):
 
 
 def extract_log_level(line):
+    """Returns the highest log level found in the string."""
     line_level = None
     log4j_levels_by_severity = ['OFF', 'DEBUG', 'TRACE', 'INFO', 'WARN', 'ERROR', 'FATAL']
     for level in log4j_levels_by_severity:
@@ -144,8 +155,20 @@ def populate_db(database, log_file):
 def create_db(db_file):
     conn = get_connection(db_file)
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS log")
-    cursor.execute("CREATE TABLE log (time timestamp, level text, sessionid text, message text)")
+    cursor.execute("DROP TABLE IF EXISTS {table_name}".format(table_name = DB_LOG_TABLE_NAME))
+
+    other_fields_sql = ""
+    if OTHER_FIELDS:
+        for field in OTHER_FIELDS:
+            other_fields_sql += ", " + field + " text"
+
+    creation_sql = "CREATE TABLE {table_name} ({time_field} timestamp, {session_id_field} text, " \
+                   "{log_message_field} text{other_fields})" \
+                   "".format(table_name = DB_LOG_TABLE_NAME, time_field = TIME_FIELD,
+                             session_id_field = SESSION_FIELD, log_message_field = LOG_MESSAGE_FIELD,
+                             other_fields = other_fields_sql)
+
+    cursor.execute(creation_sql)
     cursor.close()
     conn.commit()
 
@@ -175,6 +198,6 @@ def generate_report(database, report_file):
 
 
 if __name__ == '__main__':
-    # create_db(DB)
-    # populate_db(DB, DOTNET_LOG)
+    create_db(DB)
+    populate_db(DB, DOTNET_LOG)
     generate_report(DB, OUT_FILE)
