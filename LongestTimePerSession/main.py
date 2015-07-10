@@ -6,27 +6,29 @@ import sqlite3
 from datetime import datetime
 
 
-SAMPLE_LINE = r"2015-07-09 09:42:07,615 [11] INFO  SBS.ESA.WEBUI [(null)] - [SessionID:gunjkxtvmsr3tjvgaltoqvex]" \
-              r" [Session_Start] New SessionID:gunjkxtvmsr3tjvgaltoqvex"
+# Global configuration values
 DB = 'dotnet.db'
 DOTNET_LOG = r"//sbsfiles0/IQA_SQA_Central/IQA - Automation/tmp/emortgages/dotnetlogs.csv"
 OUT_FILE = "report.txt"
 
 
-DASH_LENGTH = 120
-REPORT_HEADER = """This report contains {{session_count}} sessions."""
-SECTION_HEADER = "SessionID:{session_id}  Rows:{row_count}  Max Wait:{max_wait}  Total Time:{session_time}"
-SECTION_LINE = """ [{level}] {time} : {message}"""
+# Report definition elements
 REPORT_FIELDS = ['sessionid', 'time', 'level', 'message']
+REPORT_HEADER = """This report contains {session_count} sessions."""
+SECTION_HEADER = "SessionID:{session_id}  Rows:{row_count}  Max Wait:{max_wait}  Total Time:{session_time}"
+SECTION_LINE = """[{level}] {time} : {message}"""
+DASH_LENGTH = 120
 
 
 class ReportSectionFunctions:
     """Functions that return values for a given set of rows.
-    rows are lists of dictionaries, each representing a record from the database."""
+    rows are lists of dictionaries, each representing a record from the database.
+    """
 
     def __init__(self, rows, order_key='time'):
         self.order_key = order_key
         self.rows = list(rows)
+        self.process_rows()
         self.header_values = self.get_header_dict()
 
     def process_timestamp(self, time):
